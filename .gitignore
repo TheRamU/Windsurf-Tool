@@ -3,10 +3,12 @@ node_modules/
 
 # Build output
 dist/
-build/
+out/
+# Keep build resources
+!build/
+build/*
 !build/icon.ico
 !build/icon.png
-out/
 
 # Logs
 *.log

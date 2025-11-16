@@ -183,12 +183,10 @@
         }
       ],
       "icon": "build/icon.ico",
-      "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+      "artifactName": "Windsurf-Tool-Setup-${version}.exe",
       "requestedExecutionLevel": "requireAdministrator",
       "verifyUpdateCodeSignature": false,
-      "certificateFile": null,
-      "certificatePassword": null,
-      "sign": null,
+      "publisherName": "Windsurf Tool",
       "extraResources": [
         {
           "from": "scripts",
