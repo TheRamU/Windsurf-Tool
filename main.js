@@ -1404,6 +1404,140 @@ ipcMain.handle('get-payment-link', async (event, { email, password }) => {
   }
 });
 
+// 获取验证令牌
+ipcMain.handle('get-auth-token', async (event, { email, password }) => {
+  const axios = require('axios');
+  const CONSTANTS = require('./js/constants');
+  
+  const FIREBASE_LOGIN_URL = CONSTANTS.WORKER_URL + '/login';
+  const WINDSURF_API_BASE = 'https://web-backend.windsurf.com';
+  
+  // Protobuf 编码函数
+  function encodeVarint(value) {
+    const result = [];
+    while (value > 0x7f) {
+      result.push((value & 0x7f) | 0x80);
+      value = value >>> 7;
+    }
+    result.push(value & 0x7f);
+    return Buffer.from(result);
+  }
+  
+  function encodeStringField(fieldNumber, value) {
+    const tag = (fieldNumber << 3) | 2;
+    const data = Buffer.from(value, 'utf-8');
+    return Buffer.concat([Buffer.from([tag]), encodeVarint(data.length), data]);
+  }
+  
+  function decodeProtobuf(buffer) {
+    let offset = 0;
+    const fields = {};
+    
+    while (offset < buffer.length) {
+      const tag = buffer[offset];
+      const fieldNumber = tag >> 3;
+      const wireType = tag & 0x7;
+      offset++;
+      
+      if (wireType === 2) {
+        let length = 0;
+        let shift = 0;
+        while (offset < buffer.length) {
+          const byte = buffer[offset++];
+          length |= (byte & 0x7f) << shift;
+          if ((byte & 0x80) === 0) break;
+          shift += 7;
+        }
+        
+        const value = buffer.slice(offset, offset + length).toString('utf-8');
+        offset += length;
+        fields[fieldNumber] = value;
+      } else {
+        break;
+      }
+    }
+    
+    return fields;
+  }
+  
+  try {
+    console.log(`[验证令牌] 开始获取账号 ${email} 的验证令牌...`);
+    
+    // 1. 登录获取 idToken
+    const loginResponse = await axios.post(FIREBASE_LOGIN_URL, {
+      email,
+      password,
+      api_key: CONSTANTS.FIREBASE_API_KEY,
+      returnSecureToken: true
+    }, {
+      headers: { 'Content-Type': 'application/json' },
+      timeout: 30000
+    });
+    
+    if (loginResponse.status !== 200 || !loginResponse.data.idToken) {
+      return { success: false, error: '登录失败，请检查账号密码' };
+    }
+    
+    const idToken = loginResponse.data.idToken;
+    console.log(`[验证令牌] 登录成功`);
+    
+    // 2. 调用 GetOneTimeAuthToken
+    const protobufData = encodeStringField(1, idToken);
+    const tokenResponse = await axios.post(
+      `${WINDSURF_API_BASE}/exa.seat_management_pb.SeatManagementService/GetOneTimeAuthToken`,
+      protobufData,
+      {
+        headers: {
+          'Content-Type': 'application/proto',
+          'connect-protocol-version': '1',
+          'Origin': 'https://windsurf.com'
+        },
+        timeout: 30000,
+        responseType: 'arraybuffer'
+      }
+    );
+    
+    if (tokenResponse.status !== 200) {
+      return { success: false, error: '获取验证令牌失败' };
+    }
+    
+    // 3. 解析响应
+    const responseBuffer = Buffer.from(tokenResponse.data);
+    const fields = decodeProtobuf(responseBuffer);
+    
+    // 假设令牌在字段 1 中
+    const authToken = fields[1];
+    
+    if (authToken) {
+      console.log(`[验证令牌] 成功获取验证令牌`);
+      return { success: true, authToken };
+    }
+    
+    return { success: false, error: '未找到验证令牌' };
+    
+  } catch (error) {
+    console.error('[验证令牌] 获取失败:', error.message);
+    
+    // 网络连接错误处理
+    if (error.code === 'ETIMEDOUT' || error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND' || error.code === 'ECONNRESET') {
+      return { 
+        success: false, 
+        error: '网络连接失败，请尝试：\n1. 关闭代理/VPN 后重试\n2. 或更换代理节点\n3. 检查网络连接是否正常' 
+      };
+    }
+    
+    // 超时错误
+    if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+      return { 
+        success: false, 
+        error: '连接超时，请尝试：\n1. 关闭代理/VPN 后重试\n2. 或更换代理节点\n3. 稍后再试' 
+      };
+    }
+    
+    return { success: false, error: error.message };
+  }
+});
+
 // 自动填写支付表单
 ipcMain.handle('auto-fill-payment', async (event, { paymentLink, card, billing }) => {
   let browser = null;

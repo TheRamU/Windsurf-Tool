@@ -1222,6 +1222,10 @@ const AccountManager = {
           <i data-lucide="download" style="width: 13px; height: 13px;"></i>
           <span>导出账号</span>
         </div>
+        <div class="context-menu-item" onclick="AccountManager.contextMenuGetAuthToken('${account.id}')" style="color: #007aff;">
+          <i data-lucide="shield-check" style="width: 13px; height: 13px;"></i>
+          <span>获取验证令牌</span>
+        </div>
         <div class="context-menu-item" onclick="AccountManager.contextMenuGetPaymentLink('${account.id}')" style="color: #34c759;">
           <i data-lucide="credit-card" style="width: 13px; height: 13px;"></i>
           <span>获取绑卡链接</span>
@@ -1707,6 +1711,134 @@ const AccountManager = {
   openPaymentLink(url) {
     window.ipcRenderer.invoke('open-external-url', url);
     this.closePaymentLinkModal();
+  },
+
+  /**
+   * 右键菜单 - 获取验证令牌
+   */
+  async contextMenuGetAuthToken(accountId) {
+    this.closeContextMenu();
+    
+    const result = await window.ipcRenderer.invoke('get-accounts');
+    if (!result || !result.success) return;
+    
+    const account = result.accounts.find(acc => acc.id === accountId);
+    if (!account) return;
+    
+    // 显示加载提示
+    if (typeof showCenterMessage === 'function') {
+      showCenterMessage('正在获取验证令牌...', 'info', 0);
+    }
+    
+    try {
+      // 调用 IPC 获取验证令牌
+      const tokenResult = await window.ipcRenderer.invoke('get-auth-token', {
+        email: account.email,
+        password: account.password
+      });
+      
+      // 移除加载提示
+      const existing = document.querySelector('.center-message-overlay');
+      if (existing) existing.remove();
+      
+      if (tokenResult.success && tokenResult.authToken) {
+        // 显示自定义弹窗
+        this.showAuthTokenModal(tokenResult.authToken);
+      } else {
+        // 失败
+        if (typeof showCenterMessage === 'function') {
+          showCenterMessage(tokenResult.error || '获取验证令牌失败', 'error', 5000);
+        }
+      }
+    } catch (error) {
+      const existing = document.querySelector('.center-message-overlay');
+      if (existing) existing.remove();
+      
+      if (typeof showCenterMessage === 'function') {
+        showCenterMessage('获取验证令牌失败: ' + error.message, 'error', 5000);
+      }
+    }
+  },
+
+  /**
+   * 显示验证令牌弹窗
+   */
+  showAuthTokenModal(authToken) {
+    // 移除已存在的弹窗
+    const existingModal = document.getElementById('authTokenModal');
+    if (existingModal) existingModal.remove();
+    
+    const modalHTML = `
+      <div id="authTokenModal" class="modal-overlay" style="display: flex;">
+        <div class="modal-dialog modern-modal" style="max-width: 500px; width: 90%;" onclick="event.stopPropagation()">
+          <div class="modern-modal-header">
+            <div class="modal-title-row">
+              <i data-lucide="shield-check" style="width: 24px; height: 24px; color: #007aff;"></i>
+              <h3 class="modal-title">验证令牌</h3>
+            </div>
+            <button class="modal-close-btn" onclick="AccountManager.closeAuthTokenModal()" title="关闭">
+              <i data-lucide="x" style="width: 20px; height: 20px;"></i>
+            </button>
+          </div>
+          
+          <div class="modern-modal-body">
+            <div class="form-group">
+              <label>令牌</label>
+              <div style="display: flex; gap: 8px;">
+                <input type="text" id="authTokenInput" value="${authToken}" readonly 
+                  style="flex: 1; font-size: 12px; background: #f5f5f7; cursor: text;">
+                <button class="btn btn-secondary" onclick="AccountManager.copyAuthToken()" title="复制">
+                  <i data-lucide="copy" style="width: 16px; height: 16px;"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <div class="modern-modal-footer">
+            <button class="btn btn-secondary" onclick="AccountManager.closeAuthTokenModal()">
+              关闭
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    // 初始化图标
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+    
+    // ESC 关闭
+    const escHandler = (e) => {
+      if (e.key === 'Escape') {
+        this.closeAuthTokenModal();
+        document.removeEventListener('keydown', escHandler);
+      }
+    };
+    document.addEventListener('keydown', escHandler);
+  },
+
+  /**
+   * 关闭验证令牌弹窗
+   */
+  closeAuthTokenModal() {
+    const modal = document.getElementById('authTokenModal');
+    if (modal) modal.remove();
+  },
+
+  /**
+   * 复制验证令牌
+   */
+  async copyAuthToken() {
+    const input = document.getElementById('authTokenInput');
+    if (input) {
+      await this.copyToClipboard(input.value);
+      if (typeof showCenterMessage === 'function') {
+        showCenterMessage('令牌已复制', 'success');
+      }
+    }
   },
 
   /**
