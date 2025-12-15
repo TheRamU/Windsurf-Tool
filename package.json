@@ -4,8 +4,8 @@
   "description": "Windsurf-Tool - 自动化管理 Windsurf 账号，支持批量注册、账号切换、到期提醒等功能",
   "main": "main.js",
   "scripts": {
-    "start": "electron .",
-    "dev": "electron-vite dev",
+    "start": "chcp 65001 && electron .",
+    "dev": "chcp 65001 && electron-vite dev",
     "build:vite": "electron-vite build",
     "build": "electron-builder",
     "build:all": "npm run build:mac && npm run build:win && npm run build:linux",
@@ -49,7 +49,6 @@
     "uuid": "^9.0.1"
   },
   "devDependencies": {
-    "asarmor": "^3.0.2",
     "cross-env": "^10.1.0",
     "electron": "^26.6.10",
     "electron-builder": "^24.13.3",

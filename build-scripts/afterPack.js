@@ -1,7 +1,6 @@
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
-const asarmor = require('asarmor');
 const JavaScriptObfuscator = require('javascript-obfuscator');
 
 // ====== ESM 依赖修复函数 ======
@@ -552,16 +551,9 @@ exports.default = async function(context) {
       // 5. 删除解压的目录
       fs.rmSync(appPath, { recursive: true, force: true });
       
-      // 6. 应用 asarmor 保护
-      console.log('   应用 asarmor 保护...');
-      const archive = await asarmor.open(asarPath);
-      archive.patch();
-      await archive.write(asarPath);
-      
       console.log('\n🔒 代码保护完成：');
       console.log('   - 主进程: 强力混淆保护');
       console.log('   - 前端 JS: 强力混淆保护');
-      console.log('   - ASAR: 防解压保护');
       
     } catch (error) {
       console.error('❌ 保护失败:', error.message);
