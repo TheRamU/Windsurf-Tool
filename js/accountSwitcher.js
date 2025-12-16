@@ -688,22 +688,21 @@ class WindsurfPathDetector {
  */
 class AccountSwitcher {
   /**
-   * 使用 refresh_token 获取 Firebase tokens（通过 Cloudflare Workers 中转）
+   * 使用 refresh_token 获取 Firebase tokens
    */
   static async getFirebaseTokens(refreshToken) {
     const axios = require('axios');
     const _CONSTANTS = getLocalConstants();
     const FIREBASE_API_KEY = _CONSTANTS.FIREBASE_API_KEY;
-    const WORKER_URL = _CONSTANTS.WORKER_URL;
+    const FIREBASE_REFRESH_TOKEN_API = _CONSTANTS.FIREBASE_REFRESH_TOKEN_API;
     
     try {
-      // 使用 JSON 格式请求（与 accountQuery.js 保持一致）
+      // 使用 Firebase API 刷新 Token
       const response = await axios.post(
-        WORKER_URL,
+        `${FIREBASE_REFRESH_TOKEN_API}?key=${FIREBASE_API_KEY}`,
         {
           grant_type: 'refresh_token',
-          refresh_token: refreshToken,
-          api_key: FIREBASE_API_KEY
+          refresh_token: refreshToken
         },
         {
           headers: {
@@ -724,12 +723,12 @@ class AccountSwitcher {
     } catch (error) {
       // 打印详细错误信息
       if (error.response) {
-        console.error('Workers 返回错误:', error.response.data);
-        throw new Error(`Workers 错误: ${JSON.stringify(error.response.data)}`);
+        console.error('Firebase 返回错误:', error.response.data);
+        throw new Error(`Firebase 错误: ${JSON.stringify(error.response.data)}`);
       }
       // 网络错误提示
       if (error.code === 'ENOTFOUND' || error.code === 'ETIMEDOUT' || error.code === 'ECONNREFUSED') {
-        throw new Error('无法连接到中转服务器，请检查网络连接或开启代理');
+        throw new Error('无法连接到 Firebase 服务器，请检查网络连接或开启代理');
       }
       throw error;
     }

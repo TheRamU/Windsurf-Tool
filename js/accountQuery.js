@@ -41,30 +41,20 @@ const AccountQuery = {
     const axios = getAxios();
     const CONSTANTS = getConstants();
     const FIREBASE_API_KEY = CONSTANTS.FIREBASE_API_KEY;
-    const WORKER_URL = CONSTANTS.WORKER_URL;
+    const FIREBASE_REFRESH_TOKEN_API = CONSTANTS.FIREBASE_REFRESH_TOKEN_API;
     
     try {
-      // 构建请求体
-      const requestBody = {
-        grant_type: 'refresh_token',
-        refresh_token: refreshToken,
-        api_key: FIREBASE_API_KEY
-      };
-      
-      if (email && password) {
-        requestBody.email = email;
-        requestBody.password = password;
-      }
-      
-      // 使用 Cloudflare Workers 中转（国内可访问）
+      // 使用 Firebase 官方 API 刷新 Token
       const response = await axios.post(
-        WORKER_URL,
-        requestBody,
+        `${FIREBASE_REFRESH_TOKEN_API}?key=${FIREBASE_API_KEY}`,
+        {
+          grant_type: 'refresh_token',
+          refresh_token: refreshToken
+        },
         {
           headers: {
             'Content-Type': 'application/json',
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-            // 'X-Secret-Key': CONSTANTS.WORKER_SECRET_KEY  // 已禁用密钥验证
           },
           timeout: CONFIG.REQUEST_TIMEOUT
         }
@@ -77,7 +67,7 @@ const AccountQuery = {
       };
     } catch (error) {
       if (error.code === 'ENOTFOUND' || error.code === 'ETIMEDOUT' || error.code === 'ECONNREFUSED') {
-        throw new Error('无法连接到中转服务器，请检查网络连接或开启代理');
+        throw new Error('无法连接到 Firebase 服务器，请检查网络连接或开启代理');
       }
       throw new Error(`获取 access_token 失败: ${error.response?.data?.error?.message || error.message}`);
     }

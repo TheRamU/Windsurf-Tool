@@ -24,7 +24,7 @@ class AccountLogin {
 
   /**
    * 直接使用邮箱密码登录获取 Firebase Token（无需浏览器）
-   * 使用 Cloudflare Workers 中转，国内可访问
+   * 使用 Firebase API 直连
    * @param {string} email - 邮箱
    * @param {string} password - 密码
    * @returns {Promise<Object>} - 返回 { idToken, refreshToken, email, expiresIn }
@@ -32,20 +32,19 @@ class AccountLogin {
   async loginWithEmailPassword(email, password) {
     try {
       const FIREBASE_API_KEY = CONSTANTS.FIREBASE_API_KEY;
-      const WORKER_URL = `${CONSTANTS.WORKER_URL}/login`;
+      const FIREBASE_LOGIN_API = CONSTANTS.FIREBASE_LOGIN_API;
       
       const response = await axios.post(
-        WORKER_URL,
+        `${FIREBASE_LOGIN_API}?key=${FIREBASE_API_KEY}`,
         {
           email: email,
           password: password,
-          api_key: FIREBASE_API_KEY
+          returnSecureToken: true
         },
         {
           headers: {
             'Content-Type': 'application/json',
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-            // 'X-Secret-Key': CONSTANTS.WORKER_SECRET_KEY  // 已禁用密钥验证
           },
           timeout: CONSTANTS.REQUEST_TIMEOUT
         }
@@ -69,11 +68,11 @@ class AccountLogin {
 
       // 判断是否为网络连接问题
       if (error.code === 'ENOTFOUND' || error.code === 'ETIMEDOUT' || error.code === 'ECONNREFUSED') {
-        this.log('无法连接到中转服务器');
+        this.log('无法连接到 Firebase 服务器');
         this.log('   错误: 网络连接失败');
         this.log('   建议: 请检查网络连接，或开启 VPN/全局代理');
-        this.log('   注意: 请确保网络可以访问 workers.dev');
-        throw new Error('无法连接到中转服务器，请检查网络连接或开启代理');
+        this.log('   注意: 请确保网络可以访问 googleapis.com');
+        throw new Error('无法连接到 Firebase 服务器，请检查网络连接或开启代理');
       }
       
       // 其他错误（如密码错误、账号不存在等）

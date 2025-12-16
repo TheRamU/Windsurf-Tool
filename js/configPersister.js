@@ -143,23 +143,21 @@ class ConfigPersister {
   async getFirebaseTokens(refreshToken) {
     const axios = require('axios');
     const FIREBASE_API_KEY = CONSTANTS.FIREBASE_API_KEY;
-    const WORKER_URL = CONSTANTS.WORKER_URL;
+    const FIREBASE_REFRESH_TOKEN_API = CONSTANTS.FIREBASE_REFRESH_TOKEN_API;
     
     try {
       console.log('[Firebase] 正在获取 Firebase tokens...');
       
       const response = await axios.post(
-        WORKER_URL,
+        `${FIREBASE_REFRESH_TOKEN_API}?key=${FIREBASE_API_KEY}`,
         {
           grant_type: 'refresh_token',
-          refresh_token: refreshToken,
-          api_key: FIREBASE_API_KEY
+          refresh_token: refreshToken
         },
         {
           headers: {
             'Content-Type': 'application/json',
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-            // 'X-Secret-Key': CONSTANTS.WORKER_SECRET_KEY  // 已禁用密钥验证
           }
         }
       );
@@ -174,7 +172,7 @@ class ConfigPersister {
     } catch (error) {
       console.error('[Firebase] 获取失败:', error.message);
       if (error.code === 'ENOTFOUND' || error.code === 'ETIMEDOUT' || error.code === 'ECONNREFUSED') {
-        throw new Error('无法连接到中转服务器，请检查网络连接或开启代理');
+        throw new Error('无法连接到 Firebase 服务器，请检查网络连接或开启代理');
       }
       throw error;
     }

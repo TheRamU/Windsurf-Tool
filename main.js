@@ -1028,19 +1028,17 @@ ipcMain.handle('refresh-account-credits', async (event, account) => {
     if (tokenExpired) {
       console.log(`[刷新积分] Token已过期，正在刷新...`);
       try {
-        // 通过 Worker 刷新 Token
+        // 通过 Firebase API 刷新 Token
         const response = await axios.post(
-          CONSTANTS.WORKER_URL,
+          `${CONSTANTS.FIREBASE_REFRESH_TOKEN_API}?key=${CONSTANTS.FIREBASE_API_KEY}`,
           {
             grant_type: 'refresh_token',
-            refresh_token: account.refreshToken,
-            api_key: CONSTANTS.FIREBASE_API_KEY
+            refresh_token: account.refreshToken
           },
           {
             headers: {
               'Content-Type': 'application/json',
               'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-              // 'X-Secret-Key': CONSTANTS.WORKER_SECRET_KEY  // 已禁用密钥验证
             },
             timeout: CONSTANTS.REQUEST_TIMEOUT
           }
@@ -1242,8 +1240,8 @@ ipcMain.handle('get-payment-link', async (event, { email, password }) => {
   const axios = require('axios');
   const CONSTANTS = require('./js/constants');
   
-  // 使用现有中转服务的 /login 路径
-  const FIREBASE_LOGIN_URL = CONSTANTS.WORKER_URL + '/login';
+  // 使用 Firebase API
+  const FIREBASE_LOGIN_URL = CONSTANTS.FIREBASE_LOGIN_API;
   const WINDSURF_API_BASE = 'https://web-backend.windsurf.com';
   const PRICE_ID = 'price_1NuJObFKuRRGjKOFJVUbaIsJ';
   const SUCCESS_URL = 'https://windsurf.com/billing/payment-success?plan_tier=pro';
@@ -1275,10 +1273,9 @@ ipcMain.handle('get-payment-link', async (event, { email, password }) => {
     console.log(`[绑卡链接] 开始获取账号 ${email} 的支付链接...`);
     
     // 1. 登录获取 idToken
-    const loginResponse = await axios.post(FIREBASE_LOGIN_URL, {
+    const loginResponse = await axios.post(`${FIREBASE_LOGIN_URL}?key=${CONSTANTS.FIREBASE_API_KEY}`, {
       email,
       password,
-      api_key: CONSTANTS.FIREBASE_API_KEY,
       returnSecureToken: true
     }, {
       headers: { 'Content-Type': 'application/json' },
@@ -1411,7 +1408,7 @@ ipcMain.handle('get-auth-token', async (event, { email, password }) => {
   const axios = require('axios');
   const CONSTANTS = require('./js/constants');
   
-  const FIREBASE_LOGIN_URL = CONSTANTS.WORKER_URL + '/login';
+  const FIREBASE_LOGIN_URL = CONSTANTS.FIREBASE_LOGIN_API;
   const WINDSURF_API_BASE = 'https://web-backend.windsurf.com';
   
   // Protobuf 编码函数
@@ -1466,10 +1463,9 @@ ipcMain.handle('get-auth-token', async (event, { email, password }) => {
     console.log(`[验证令牌] 开始获取账号 ${email} 的验证令牌...`);
     
     // 1. 登录获取 idToken
-    const loginResponse = await axios.post(FIREBASE_LOGIN_URL, {
+    const loginResponse = await axios.post(`${FIREBASE_LOGIN_URL}?key=${CONSTANTS.FIREBASE_API_KEY}`, {
       email,
       password,
-      api_key: CONSTANTS.FIREBASE_API_KEY,
       returnSecureToken: true
     }, {
       headers: { 'Content-Type': 'application/json' },
