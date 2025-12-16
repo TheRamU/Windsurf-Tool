@@ -627,6 +627,19 @@ class RegistrationBot {
         ]
       };
       
+      // 应用 HTTP 代理配置
+      try {
+        const proxyConfig = require('../js/proxyConfig');
+        const proxyUrl = proxyConfig.getProxyUrl();
+        if (proxyUrl) {
+          connectOptions.args.push(`--proxy-server=${proxyUrl}`);
+          this.log(`已配置浏览器代理: ${proxyUrl}`);
+        }
+      } catch (error) {
+        // 代理配置失败不影响浏览器启动
+        console.warn('加载代理配置失败:', error.message);
+      }
+      
       // 如果找到了 Chrome 路径，使用指定路径
       if (chromePath) {
         connectOptions.executablePath = chromePath;

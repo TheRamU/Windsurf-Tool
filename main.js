@@ -1009,7 +1009,7 @@ ipcMain.handle('refresh-account-credits', async (event, account) => {
     // 使用 AccountQuery 模块获取真实的账号信息
     const AccountQuery = require(path.join(__dirname, 'js', 'accountQuery'));
     const CONSTANTS = require(path.join(__dirname, 'js', 'constants'));
-    const axios = require('axios');
+    const proxyConfig = require(path.join(__dirname, 'js', 'proxyConfig'));
     
     // 检查是否有 refreshToken
     if (!account.refreshToken) {
@@ -1029,7 +1029,7 @@ ipcMain.handle('refresh-account-credits', async (event, account) => {
       console.log(`[刷新积分] Token已过期，正在刷新...`);
       try {
         // 通过 Firebase API 刷新 Token
-        const response = await axios.post(
+        const response = await proxyConfig.getAxios().post(
           `${CONSTANTS.FIREBASE_REFRESH_TOKEN_API}?key=${CONSTANTS.FIREBASE_API_KEY}`,
           {
             grant_type: 'refresh_token',
@@ -1090,7 +1090,7 @@ ipcMain.handle('refresh-account-credits', async (event, account) => {
     
     // Step 2: 查询账号使用情况
     console.log(`[刷新积分] 正在查询账号使用情况...`);
-    const usageResponse = await axios.post(
+    const usageResponse = await proxyConfig.getAxios().post(
       'https://web-backend.windsurf.com/exa.seat_management_pb.SeatManagementService/GetPlanStatus',
       { auth_token: accessToken },
       {
@@ -1237,7 +1237,7 @@ ipcMain.handle('open-external-url', async (event, url) => {
 
 // 获取绑卡/支付链接
 ipcMain.handle('get-payment-link', async (event, { email, password }) => {
-  const axios = require('axios');
+  const proxyConfig = require('./js/proxyConfig');
   const CONSTANTS = require('./js/constants');
   
   // 使用 Firebase API
@@ -1273,7 +1273,7 @@ ipcMain.handle('get-payment-link', async (event, { email, password }) => {
     console.log(`[绑卡链接] 开始获取账号 ${email} 的支付链接...`);
     
     // 1. 登录获取 idToken
-    const loginResponse = await axios.post(`${FIREBASE_LOGIN_URL}?key=${CONSTANTS.FIREBASE_API_KEY}`, {
+    const loginResponse = await proxyConfig.getAxios().post(`${FIREBASE_LOGIN_URL}?key=${CONSTANTS.FIREBASE_API_KEY}`, {
       email,
       password,
       returnSecureToken: true
@@ -1291,7 +1291,7 @@ ipcMain.handle('get-payment-link', async (event, { email, password }) => {
     
     // 2. 获取用户信息
     const protobufData1 = encodeStringField(1, idToken);
-    await axios.post(
+    await proxyConfig.getAxios().post(
       `${WINDSURF_API_BASE}/exa.seat_management_pb.SeatManagementService/GetCurrentUser`,
       protobufData1,
       {
@@ -1305,7 +1305,7 @@ ipcMain.handle('get-payment-link', async (event, { email, password }) => {
     );
     
     // 3. 获取预批准
-    await axios.post(
+    await proxyConfig.getAxios().post(
       `${WINDSURF_API_BASE}/exa.seat_management_pb.SeatManagementService/GetPreapprovalForUser`,
       protobufData1,
       {
@@ -1328,7 +1328,7 @@ ipcMain.handle('get-payment-link', async (event, { email, password }) => {
       encodeVarintField(9, 1)
     ]);
     
-    const subscribeResponse = await axios.post(
+    const subscribeResponse = await proxyConfig.getAxios().post(
       `${WINDSURF_API_BASE}/exa.seat_management_pb.SeatManagementService/SubscribeToPlan`,
       subscribeData,
       {
@@ -1405,7 +1405,7 @@ ipcMain.handle('get-payment-link', async (event, { email, password }) => {
 
 // 获取验证令牌
 ipcMain.handle('get-auth-token', async (event, { email, password }) => {
-  const axios = require('axios');
+  const proxyConfig = require('./js/proxyConfig');
   const CONSTANTS = require('./js/constants');
   
   const FIREBASE_LOGIN_URL = CONSTANTS.FIREBASE_LOGIN_API;
@@ -1463,7 +1463,7 @@ ipcMain.handle('get-auth-token', async (event, { email, password }) => {
     console.log(`[验证令牌] 开始获取账号 ${email} 的验证令牌...`);
     
     // 1. 登录获取 idToken
-    const loginResponse = await axios.post(`${FIREBASE_LOGIN_URL}?key=${CONSTANTS.FIREBASE_API_KEY}`, {
+    const loginResponse = await proxyConfig.getAxios().post(`${FIREBASE_LOGIN_URL}?key=${CONSTANTS.FIREBASE_API_KEY}`, {
       email,
       password,
       returnSecureToken: true
@@ -1481,7 +1481,7 @@ ipcMain.handle('get-auth-token', async (event, { email, password }) => {
     
     // 2. 调用 GetOneTimeAuthToken
     const protobufData = encodeStringField(1, idToken);
-    const tokenResponse = await axios.post(
+    const tokenResponse = await proxyConfig.getAxios().post(
       `${WINDSURF_API_BASE}/exa.seat_management_pb.SeatManagementService/GetOneTimeAuthToken`,
       protobufData,
       {
@@ -1601,18 +1601,32 @@ ipcMain.handle('auto-fill-payment', async (event, { paymentLink, card, billing }
     
     console.log('[自动填写] Chrome 路径:', chromePath);
     
+    // 准备浏览器启动参数
+    const launchArgs = [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-blink-features=AutomationControlled',
+      '--disable-infobars',
+      '--start-maximized'
+    ];
+    
+    // 应用 HTTP 代理配置
+    try {
+      const proxyUrl = proxyConfig.getProxyUrl();
+      if (proxyUrl) {
+        launchArgs.push(`--proxy-server=${proxyUrl}`);
+        console.log('[自动填写] 已配置浏览器代理:', proxyUrl);
+      }
+    } catch (error) {
+      console.warn('[自动填写] 加载代理配置失败:', error.message);
+    }
+    
     // 启动浏览器
     browser = await puppeteer.launch({
       executablePath: chromePath,
       headless: false,
       defaultViewport: null,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-blink-features=AutomationControlled',
-        '--disable-infobars',
-        '--start-maximized'
-      ]
+      args: launchArgs
     });
     
     const page = await browser.newPage();
@@ -1995,6 +2009,74 @@ ipcMain.handle('get-current-login', async () => {
   }
 });
 
+// 测试HTTP代理连接
+ipcMain.handle('test-proxy', async (event, proxyUrl) => {
+  try {
+    const https = require('https');
+    const { URL } = require('url');
+    const HttpsProxyAgent = require('https-proxy-agent');
+    
+    return new Promise((resolve) => {
+      const timeout = 10000; // 10秒超时
+      const testUrl = 'https://www.google.com';
+      
+      try {
+        const agent = new HttpsProxyAgent(proxyUrl);
+        const urlObj = new URL(testUrl);
+        
+        const req = https.request({
+          hostname: urlObj.hostname,
+          port: urlObj.port || 443,
+          path: urlObj.pathname,
+          method: 'HEAD',
+          agent: agent,
+          timeout: timeout
+        }, (res) => {
+          req.destroy();
+          if (res.statusCode >= 200 && res.statusCode < 400) {
+            resolve({ 
+              success: true, 
+              message: `代理连接成功！状态码: ${res.statusCode}` 
+            });
+          } else {
+            resolve({ 
+              success: false, 
+              message: `代理连接失败，状态码: ${res.statusCode}` 
+            });
+          }
+        });
+        
+        req.on('error', (error) => {
+          resolve({ 
+            success: false, 
+            message: `代理连接失败: ${error.message}` 
+          });
+        });
+        
+        req.on('timeout', () => {
+          req.destroy();
+          resolve({ 
+            success: false, 
+            message: '代理连接超时（10秒）' 
+          });
+        });
+        
+        req.end();
+      } catch (error) {
+        resolve({ 
+          success: false, 
+          message: `代理配置错误: ${error.message}` 
+        });
+      }
+    });
+  } catch (error) {
+    return { 
+      success: false, 
+      message: `测试失败: ${error.message}` 
+    };
+  }
+});
+
 // 测试IMAP连接
 ipcMain.handle('test-imap', async (event, config) => {
   try {
@@ -2070,6 +2152,15 @@ ipcMain.handle('save-windsurf-config', async (event, config) => {
     await fs.writeFile(configFile, JSON.stringify(config, null, 2));
     
     console.log(`Windsurf配置已保存 (${process.platform}):`, configFile);
+    
+    // 重新加载代理配置
+    try {
+      proxyConfig.reloadProxy();
+      console.log('[代理配置] 配置已更新');
+    } catch (error) {
+      console.warn('[代理配置] 重新加载代理配置失败:', error.message);
+    }
+    
     return { success: true, message: '配置已保存' };
   } catch (error) {
     console.error(`保存Windsurf配置失败 (${process.platform}):`, error);

@@ -691,14 +691,14 @@ class AccountSwitcher {
    * 使用 refresh_token 获取 Firebase tokens
    */
   static async getFirebaseTokens(refreshToken) {
-    const axios = require('axios');
+    const proxyConfig = require('./proxyConfig');
     const _CONSTANTS = getLocalConstants();
     const FIREBASE_API_KEY = _CONSTANTS.FIREBASE_API_KEY;
     const FIREBASE_REFRESH_TOKEN_API = _CONSTANTS.FIREBASE_REFRESH_TOKEN_API;
     
     try {
       // 使用 Firebase API 刷新 Token
-      const response = await axios.post(
+      const response = await proxyConfig.getAxios().post(
         `${FIREBASE_REFRESH_TOKEN_API}?key=${FIREBASE_API_KEY}`,
         {
           grant_type: 'refresh_token',
@@ -738,11 +738,11 @@ class AccountSwitcher {
    * 使用 access_token 获取 api_key
    */
   static async getApiKey(accessToken) {
-    const axios = require('axios');
+    const proxyConfig = require('./proxyConfig');
     const _CONSTANTS = getLocalConstants();
     
     try {
-      const response = await axios.post(
+      const response = await proxyConfig.getAxios().post(
         _CONSTANTS.WINDSURF_REGISTER_API,
         {
           firebase_id_token: accessToken

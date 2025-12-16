@@ -3123,6 +3123,13 @@ function renderSettingsFromCurrentConfig() {
     if (imapPassword) imapPassword.value = '';
   }
   
+  // 加载 HTTP 代理配置
+  const httpProxy = document.getElementById('httpProxy');
+  if (httpProxy) {
+    httpProxy.value = currentConfig.httpProxy || '';
+    console.log('📥 HTTP 代理已加载:', httpProxy.value);
+  }
+
   // 加载密码配置
   const passwordMode = document.getElementById('passwordMode');
   if (passwordMode) {
@@ -3364,6 +3371,45 @@ function showCenterMessage(message, type = 'info', duration = 3000) {
   }
 }
 
+async function testProxy() {
+  const proxyUrl = document.getElementById('httpProxy').value.trim();
+  
+  if (!proxyUrl) {
+    showCenterMessage('请填写 HTTP 代理地址', 'warning');
+    return;
+  }
+  
+  // 验证代理URL格式
+  try {
+    const url = new URL(proxyUrl);
+    if (!['http:', 'https:'].includes(url.protocol)) {
+      showCenterMessage('代理地址必须以 http:// 或 https:// 开头', 'warning');
+      return;
+    }
+  } catch (error) {
+    showCenterMessage('代理地址格式不正确', 'warning');
+    return;
+  }
+  
+  // 显示测试中提示
+  showCenterMessage('正在测试代理连接...', 'info', 0);
+  
+  const result = await window.ipcRenderer.invoke('test-proxy', proxyUrl);
+  
+  // 移除测试中提示
+  const existing = document.querySelector('.center-message-overlay');
+  if (existing) {
+    existing.remove();
+  }
+  
+  // 显示结果
+  if (result.success) {
+    showCenterMessage(result.message, 'success');
+  } else {
+    showCenterMessage(result.message, 'error', 5000);
+  }
+}
+
 async function testImap() {
   // QQ 邮箱固定配置
   const config = {
@@ -3426,6 +3472,18 @@ async function saveSettings() {
       }
     } catch (e) {
       console.warn('从界面收集域名列表失败，将使用内存中的 emailDomains:', e);
+    }
+
+    // 保存 HTTP 代理配置
+    const httpProxy = document.getElementById('httpProxy');
+    if (httpProxy) {
+      currentConfig.httpProxy = httpProxy.value.trim();
+      console.log('💾 HTTP 代理已保存:', currentConfig.httpProxy);
+      
+      // 重新加载代理配置，更新 window.axios
+      if (typeof window.reloadProxyConfig === 'function') {
+        window.reloadProxyConfig();
+      }
     }
 
     // QQ 邮箱固定配置

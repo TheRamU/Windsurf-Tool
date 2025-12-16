@@ -4,7 +4,7 @@
  * 用于为已有账号（只有邮箱密码）获取完整的 Token 信息
  */
 
-const axios = require('axios');
+const proxyConfig = require('./proxyConfig');
 const CONSTANTS = require('./constants');
 
 class AccountLogin {
@@ -34,7 +34,7 @@ class AccountLogin {
       const FIREBASE_API_KEY = CONSTANTS.FIREBASE_API_KEY;
       const FIREBASE_LOGIN_API = CONSTANTS.FIREBASE_LOGIN_API;
       
-      const response = await axios.post(
+      const response = await proxyConfig.getAxios().post(
         `${FIREBASE_LOGIN_API}?key=${FIREBASE_API_KEY}`,
         {
           email: email,
@@ -135,7 +135,7 @@ class AccountLogin {
    */
   async getApiKey(accessToken) {
     try {
-      const response = await axios.post(
+      const response = await proxyConfig.getAxios().post(
         'https://register.windsurf.com/exa.seat_management_pb.SeatManagementService/RegisterUser',
         {
           firebase_id_token: accessToken

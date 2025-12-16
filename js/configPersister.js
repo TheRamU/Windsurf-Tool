@@ -141,14 +141,14 @@ class ConfigPersister {
    * 获取 Firebase token
    */
   async getFirebaseTokens(refreshToken) {
-    const axios = require('axios');
+    const proxyConfig = require('./proxyConfig');
     const FIREBASE_API_KEY = CONSTANTS.FIREBASE_API_KEY;
     const FIREBASE_REFRESH_TOKEN_API = CONSTANTS.FIREBASE_REFRESH_TOKEN_API;
     
     try {
       console.log('[Firebase] 正在获取 Firebase tokens...');
       
-      const response = await axios.post(
+      const response = await proxyConfig.getAxios().post(
         `${FIREBASE_REFRESH_TOKEN_API}?key=${FIREBASE_API_KEY}`,
         {
           grant_type: 'refresh_token',

@@ -2826,9 +2826,17 @@
     const CONSTANTS = require('./js/constants');
     window.CONSTANTS = CONSTANTS;
     
-    // 加载 axios 并设为全局变量
-    const axios = require('axios');
-    window.axios = axios;
+    // 加载 proxyConfig 并使用其 axios 实例（支持代理）
+    const proxyConfig = require('./js/proxyConfig');
+    window.axios = proxyConfig.getAxios();
+    
+    // 提供全局函数用于重新加载代理配置
+    window.reloadProxyConfig = function() {
+      console.log('[代理配置] 重新加载代理配置...');
+      proxyConfig.reloadProxy();
+      window.axios = proxyConfig.getAxios();
+      console.log('[代理配置] window.axios 已更新');
+    };
   </script>
   <script src="js/filePathManager.js"></script>
   <script src="js/domainManager.js"></script>
@@ -3288,6 +3296,28 @@
                 <div style="margin-top: 16px; display: flex; justify-content: flex-end;">
                   <button class="btn btn-secondary" onclick="testImap()">
                     <i data-lucide="wifi" style="width: 14px; height: 14px;"></i> 测试连接
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- 网络设置 -->
+            <div>
+              <div class="settings-section-title">
+                <i data-lucide="network" style="width: 14px; height: 14px;"></i>
+                网络
+              </div>
+              <div class="settings-card-new">
+                <div class="setting-full-row">
+                  <div class="setting-input-wrapper">
+                    <label class="setting-label">HTTP 代理</label>
+                    <input type="text" id="httpProxy" placeholder="http://127.0.0.1:7890">
+                    <div class="setting-helper">填入 HTTP 代理地址，留空则不使用代理</div>
+                  </div>
+                </div>
+                <div style="margin-top: 16px; display: flex; justify-content: flex-end;">
+                  <button class="btn btn-secondary" onclick="testProxy()">
+                    <i data-lucide="wifi" style="width: 14px; height: 14px;"></i> 测试代理
                   </button>
                 </div>
               </div>

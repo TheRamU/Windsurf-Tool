@@ -6,7 +6,8 @@ function getAxios() {
   if (typeof window !== 'undefined' && window.axios) {
     return window.axios;
   }
-  return require('axios');
+  const proxyConfig = require('./proxyConfig');
+  return proxyConfig.getAxios();
 }
 
 function getConstants() {
